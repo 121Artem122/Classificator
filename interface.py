@@ -5,25 +5,13 @@ import re
 import pymorphy2
 import pickle
 from nltk.stem.snowball import SnowballStemmer
+import openpyxl
 
 russian_stopwords = stop_words.get_stop_words('ru')
-russian_stopwords.extend(['здравствуйте', 'до свидания', 'добрый день', 'добрый вечер', 'доброе утро'])
-
-
-def remove_puctuation(text):
-    return ''.join(c for c in text if c not in string.punctuation)
-
-
-def remove_numbers(text):
-    return ' '.join([i if not i.isdigit() else ' ' for i in text])
-
-
-def remove_multiple_spaces(text):
-    return re.sub(r'\s+', ' ', text, flags=re.I)
 
 
 def df_preprocess(text):
-    reg = re.compile('[^а-яА-яa-zA-Z0-9 ]')  #
+    reg = re.compile('[^а-яА-яa-zA-Z0-9 ]')
     text = text.lower().replace("ё", "е")
     text = text.replace("ъ", "ь")
     text = text.replace("й", "и")
@@ -38,26 +26,17 @@ def df_preprocess(text):
 
 
 def Enter(ent, b):
-    now = ent
-    adjustment_text = [remove_multiple_spaces(remove_numbers(remove_puctuation(now.lower())))]
-    raw_data = adjustment_text
-    morph = pymorphy2.MorphAnalyzer()
-    tex = []
-    for text in raw_data:
-        text_lem = [morph.parse(word)[0].normal_form for word in text.split(' ')]
-        for word in text_lem:
-            if word not in russian_stopwords:
-                tex.append(word)
-    texor = ' '.join(tex)
+
+    row_data = df_preprocess(ent)
 
     if b == 1:
         with open('model_classification_RandomForest', 'rb') as training_model:
             model = pickle.load(training_model)
-            test = model.predict([texor])
+            test = model.predict([row_data])
     if b == 2:
         with open('model_classification_LogReg', 'rb') as training_model:
             model = pickle.load(training_model)
-            test = model.predict([texor])
+            test = model.predict([row_data])
     return test
 
 
@@ -85,21 +64,29 @@ window = sg.Window('Классификатор', layout)
 while True:
     event, values = window.read()
     file = values['-FILE-']
-    with open(file, 'r') as file1:
-        enter = file1.read()
-    print(enter)
+
     if event == sg.WIN_CLOSED or event == 'Cancel':
         break
     if event == 'Построить модель':
-        key_enter = enter
+
         if values['rf'] == True:
             but = 1
         if values['lr'] == True:
             but = 2
-        Answer = str(Enter(enter, but))
-        res = Answer.translate({ord(i): None for i in '[\']'})
-        window['out'].update(res)
-        with open(file, 'w') as file2:
-            file2.write(key_enter + '\n' + str(res))
+
+        workbook = openpyxl.load_workbook(file)
+        worksheet = workbook.active
+
+        i = 1
+
+        while (i<3000):
+            cell_value = worksheet['A' + str(i)].value
+            Result = str(Enter(str(cell_value),but))
+            worksheet['B'+str(i)] = Result
+            i+=1
+            print(i)
+
+        workbook.save('result.xlsx')
+
 file.close()
 window.close()

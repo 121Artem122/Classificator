@@ -3,6 +3,7 @@ import csv
 import pickle
 import pandas as pd
 import re
+import nltk
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -17,7 +18,8 @@ from sklearn.metrics import classification_report
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from sklearn.cluster import  KMeans
-
+from nltk.cluster.kmeans import KMeansClusterer
+from nltk.cluster.util import cosine_distance
 
 def list_to_str(arr):
     str_ = ''
@@ -48,10 +50,10 @@ def df_preprocess(text):
     return text
 
 
-economy = cav_to_list(csv.reader(codecs.open('economy.csv', 'rU', 'utf-8', errors='ignore')))
-cooking = cav_to_list(csv.reader(codecs.open('cooking.csv', 'rU', 'utf-8', errors='ignore')))
-culture = cav_to_list(csv.reader(codecs.open('culture.csv', 'rU', 'utf-8', errors='ignore')))
-sport = cav_to_list(csv.reader(codecs.open('sport.csv', 'rU', 'utf-8', errors='ignore')))
+economy = cav_to_list(csv.reader(codecs.open('economy2.csv', 'rU', 'utf-8', errors='ignore')))
+cooking = cav_to_list(csv.reader(codecs.open('cooking2.csv', 'rU', 'utf-8', errors='ignore')))
+#culture = cav_to_list(csv.reader(codecs.open('culture.csv', 'rU', 'utf-8', errors='ignore')))
+sport = cav_to_list(csv.reader(codecs.open('sport2.csv', 'rU', 'utf-8', errors='ignore')))
 
 df_economy = pd.DataFrame(economy, columns=['recall'])
 df_economy['type'] = 0
@@ -61,9 +63,9 @@ df_cooking = pd.DataFrame(cooking, columns=['recall'])
 df_cooking['type'] = 1
 df_cooking.head()
 
-df_culture = pd.DataFrame(culture, columns=['recall'])
-df_culture['type'] = 2
-df_culture.head()
+#df_culture = pd.DataFrame(culture, columns=['recall'])
+#df_culture['type'] = 2
+#df_culture.head()
 
 df_sport = pd.DataFrame(sport, columns=['recall'])
 df_sport['type'] = 3
@@ -73,7 +75,6 @@ raw_data = pd.concat((df_economy, df_cooking, df_sport), axis=0).sample(frac=1.0
 raw_data.head()
 
 russian_stopwords = stopwords.words("russian")
-russian_stopwords.extend(['здравствуйте', 'до свидания', 'добрый день', 'добрый вечер', 'доброе утро'])
 raw_data['recall'] = raw_data['recall'].apply(df_preprocess)
 
 X = raw_data['recall']
@@ -82,7 +83,6 @@ X_train, X_test, y_train, y_test = train_test_split(raw_data['recall'], raw_data
                                                     random_state=42,
                                                     test_size=0.3)
 
-kmeans = KMeans ( n_clusters = 8, init = 'k-means++', n_init = 'warn', max_iter = 300, tol = 0.0001, verbose = 0, random_state = None, copy_x = True)
 
 # Векторное представление
 vectorizer = CountVectorizer()
@@ -138,7 +138,7 @@ RandomForest = Pipeline([
                              min_df=5,
                              max_df=0.7,
                              stop_words=russian_stopwords)),
-    ('clf', RandomForestClassifier(random_state=0)),
+    ('clf', RandomForestClassifier(random_state=42)),
 ])
 RandomForest.fit(X_train, y_train)
 y_pred = RandomForest.predict(X_test)
@@ -173,9 +173,13 @@ RandomForest1 = Pipeline([
                              min_df=5,
                              max_df=0.7,
                              stop_words=russian_stopwords)),
+    ('kms', KMeans(n_clusters=30, init='k-means++', n_init='warn',
+                   max_iter=300, tol=0.0001, verbose=0, random_state=None,
+                   copy_x=True, algorithm='lloyd')),
     ('tfidf', TfidfTransformer()),
-    ('clf', RandomForestClassifier(random_state=0)),
+    ('clf', RandomForestClassifier(random_state=47)),
 ])
+
 RandomForest1.fit(X_train, y_train)
 y_pred2 = RandomForest1.predict(X_test)
 with open('model_classification_RandomForest_1', 'wb') as picklefile:
@@ -190,6 +194,9 @@ LogReg1 = Pipeline([
                              min_df=5,
                              max_df=0.7,
                              stop_words=russian_stopwords)),
+    ('kms', KMeans(n_clusters=30, init='k-means++', n_init='warn',
+                   max_iter=300, tol=0.0001, verbose=0, random_state=None,
+                   copy_x=True, algorithm='lloyd')),
     ('tfidf', TfidfTransformer()),
     ('clf', LogisticRegression(n_jobs=3, C=1e5, solver='saga',
                                multi_class='multinomial',
