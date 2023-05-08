@@ -1,25 +1,17 @@
 import codecs
 import csv
-import pickle
 import pandas as pd
 import re
-import nltk
+
+from sklearn import svm
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import accuracy_score
-from sklearn.svm import LinearSVC
-from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import cross_val_score
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
-from sklearn.cluster import  KMeans
-from nltk.cluster.kmeans import KMeansClusterer
-from nltk.cluster.util import cosine_distance
 import matplotlib.pyplot as plt
 
 def list_to_str(arr):
@@ -53,7 +45,6 @@ def df_preprocess(text):
 
 economy = cav_to_list(csv.reader(codecs.open('economy2.csv', 'rU', 'utf-8', errors='ignore')))
 cooking = cav_to_list(csv.reader(codecs.open('cooking2.csv', 'rU', 'utf-8', errors='ignore')))
-#culture = cav_to_list(csv.reader(codecs.open('culture.csv', 'rU', 'utf-8', errors='ignore')))
 sport = cav_to_list(csv.reader(codecs.open('sport2.csv', 'rU', 'utf-8', errors='ignore')))
 
 df_economy = pd.DataFrame(economy, columns=['recall'])
@@ -63,10 +54,6 @@ df_economy.head()
 df_cooking = pd.DataFrame(cooking, columns=['recall'])
 df_cooking['type'] = 1
 df_cooking.head()
-
-#df_culture = pd.DataFrame(culture, columns=['recall'])
-#df_culture['type'] = 2
-#df_culture.head()
 
 df_sport = pd.DataFrame(sport, columns=['recall'])
 df_sport['type'] = 3
@@ -84,27 +71,22 @@ X_train, X_test, y_train, y_test = train_test_split(raw_data['recall'], raw_data
                                                     random_state=42,
                                                     test_size=0.3)
 
-russian_stopwords = stopwords.words("russian")
-
 sp_x = []
 sp_y = []
 
-for i in range(1,1000,10):
-    RandomForest = Pipeline([
-        ('vect', CountVectorizer(max_features=1500,
-                                 min_df=5,
-                                 max_df=0.7,
-                                 stop_words=russian_stopwords)),
-        ('clf', RandomForestClassifier(random_state=i)),
-    ])
-    RandomForest.fit(X_train, y_train)
-    y_pred = RandomForest.predict(X_test)
-    with open('model_classification_RandomForest', 'wb') as picklefile:
-        pickle.dump(RandomForest, picklefile)
-    print(classification_report(y_test, y_pred))
-    print(f"F1 Score случайный лес: {accuracy_score(y_test, y_pred)}")
+for i in range(1,200,10):
+    SVM = Pipeline([
+    ('vect', CountVectorizer(max_features=1500,
+                             min_df=5,
+                             max_df=0.7,
+                             stop_words=russian_stopwords)),
+    ('svm', svm.SVC(kernel = 'rbf')),
+     ])
+    SVM.fit(X_train, y_train)
+    y_pred3 = SVM.predict(X_test)
+    print(f"F1 Score  метод опорных векторов: {accuracy_score(y_test, y_pred3)}")
     sp_x.append(i)
-    sp_y.append(accuracy_score(y_test, y_pred))
+    sp_y.append(accuracy_score(y_test, y_pred3))
 
-plt.plot(sp_x,sp_y)
+plt.plot(sp_x, sp_y)
 plt.show()

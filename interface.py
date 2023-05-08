@@ -1,8 +1,6 @@
 import PySimpleGUI as sg
 import stop_words
-import string
 import re
-import pymorphy2
 import pickle
 from nltk.stem.snowball import SnowballStemmer
 import openpyxl
@@ -37,6 +35,14 @@ def Enter(ent, b):
         with open('model_classification_LogReg', 'rb') as training_model:
             model = pickle.load(training_model)
             test = model.predict([row_data])
+    if b == 3:
+        with open('model_classification_KNN', 'rb') as training_model:
+            model = pickle.load(training_model)
+            test = model.predict([row_data])
+    if b == 4:
+        with open('model_classification_SVM', 'rb') as training_model:
+            model = pickle.load(training_model)
+            test = model.predict([row_data])
     return test
 
 
@@ -53,8 +59,11 @@ layout = [
     [sg.Checkbox('Случайный лес', key='rf', font=("Bodoni MT", 15)),
      sg.Checkbox('Логистическая регрессия', key='lr', font=("Bodoni MT", 15))
      ],
+    [sg.Checkbox('K-ближайшие соседи', key='knn', font=("Bodoni MT", 15)),
+     sg.Checkbox('Опорные вектора', key='svm', font=("Bodoni MT", 15))
+     ],
     [sg.Button('Построить модель', font=("Bodoni MT", 15))],
-    [sg.Text('Текст принадлежит категории:  ', font=("Bodoni MT", 20)),
+    [
      sg.Text('', key='out')
      ]
 ]
@@ -73,20 +82,26 @@ while True:
             but = 1
         if values['lr'] == True:
             but = 2
+        if values['knn'] == True:
+            but = 3
+        if values['svm'] == True:
+            but = 4
 
         workbook = openpyxl.load_workbook(file)
         worksheet = workbook.active
 
         i = 1
 
-        while (i<3000):
+        while i < 3000:
             cell_value = worksheet['A' + str(i)].value
-            Result = str(Enter(str(cell_value),but))
+            Result = str(Enter(str(cell_value), but))
             worksheet['B'+str(i)] = Result
-            i+=1
+            i += 1
             print(i)
 
-        workbook.save('result.xlsx')
+        window['out'].update('зайдите в файл result', font=("Bodoni MT", 20))
+
+        workbook.save('log.xlsx')
 
 file.close()
 window.close()
